@@ -76,7 +76,7 @@ const KNOWN_SET_EVENTS = new Set([
     'survey sent',
 ])
 
-const trackIfNonPersonEventUpdatesPersons = (event: PipelineEvent) => {
+const trackIfNonPersonEventUpdatesPersons = (event: PipelineEvent): void => {
     if (
         !PERSON_EVENTS.has(event.event) &&
         !KNOWN_SET_EVENTS.has(event.event) &&
@@ -169,7 +169,11 @@ export class IngestionConsumer {
         })
 
         this.deduplicationRedis = createDeduplicationRedis(this.hub)
-        this.kafkaConsumer = new KafkaConsumer({ groupId: this.groupId, topic: this.topic })
+        this.kafkaConsumer = new KafkaConsumer({
+            groupId: this.groupId,
+            topic: this.topic,
+            waitForBackgroundTasksOnRebalance: this.hub.CONSUMER_WAIT_FOR_BACKGROUND_TASKS_ON_REBALANCE,
+        })
     }
 
     public get service(): PluginServerService {
@@ -219,7 +223,7 @@ export class IngestionConsumer {
         logger.info('👍', `${this.name} - stopped!`)
     }
 
-    public isHealthy() {
+    public isHealthy(): boolean {
         return this.kafkaConsumer?.isHealthy()
     }
 
@@ -522,7 +526,7 @@ export class IngestionConsumer {
         }
     }
 
-    private async handleProcessingErrorV1(error: any, message: Message, event: PipelineEvent) {
+    private async handleProcessingErrorV1(error: any, message: Message, event: PipelineEvent): Promise<void> {
         logger.error('🔥', `Error processing message`, {
             stack: error.stack,
             error: error,
@@ -625,7 +629,7 @@ export class IngestionConsumer {
 
             if (this.shouldSkipPerson(event.token, event.distinct_id)) {
                 event.properties = {
-                    ...(event.properties ?? {}),
+                    ...event.properties,
                     $process_person_profile: false,
                 }
             }
@@ -636,7 +640,7 @@ export class IngestionConsumer {
         return Promise.resolve(batch)
     }
 
-    private groupEventsByDistinctId(messages: IncomingEventWithTeam[]) {
+    private groupEventsByDistinctId(messages: IncomingEventWithTeam[]): IncomingEventsByDistinctId {
         const batches: IncomingEventsByDistinctId = {}
         for (const { event, message, team } of messages) {
             const token = event.token ?? ''
@@ -674,7 +678,7 @@ export class IngestionConsumer {
         return resolvedMessages
     }
 
-    private logDroppedEvent(token?: string, distinctId?: string) {
+    private logDroppedEvent(token?: string, distinctId?: string): void {
         logger.debug('🔁', `Dropped event`, {
             token,
             distinctId,
@@ -687,28 +691,28 @@ export class IngestionConsumer {
             .inc()
     }
 
-    private shouldDropEvent(token?: string, distinctId?: string) {
+    private shouldDropEvent(token?: string, distinctId?: string): boolean {
         if (!token) {
             return false
         }
         return this.eventIngestionRestrictionManager.shouldDropEvent(token, distinctId)
     }
 
-    private shouldSkipPerson(token?: string, distinctId?: string) {
+    private shouldSkipPerson(token?: string, distinctId?: string): boolean {
         if (!token) {
             return false
         }
         return this.eventIngestionRestrictionManager.shouldSkipPerson(token, distinctId)
     }
 
-    private shouldForceOverflow(token?: string, distinctId?: string) {
+    private shouldForceOverflow(token?: string, distinctId?: string): boolean {
         if (!token) {
             return false
         }
         return this.eventIngestionRestrictionManager.shouldForceOverflow(token, distinctId)
     }
 
-    private validateHeadersMatchEvent(event: PipelineEvent, headerToken?: string, headerDistinctId?: string) {
+    private validateHeadersMatchEvent(event: PipelineEvent, headerToken?: string, headerDistinctId?: string): void {
         let tokenStatus = 'ok'
         if (!headerToken && event.token) {
             tokenStatus = 'missing_in_header'
@@ -746,7 +750,7 @@ export class IngestionConsumer {
         }
     }
 
-    private overflowEnabled() {
+    private overflowEnabled(): boolean {
         return (
             !!this.hub.INGESTION_CONSUMER_OVERFLOW_TOPIC &&
             this.hub.INGESTION_CONSUMER_OVERFLOW_TOPIC !== this.topic &&
@@ -754,7 +758,7 @@ export class IngestionConsumer {
         )
     }
 
-    private async emitToOverflow(kafkaMessages: Message[], preservePartitionLocalityOverride?: boolean) {
+    private async emitToOverflow(kafkaMessages: Message[], preservePartitionLocalityOverride?: boolean): Promise<void> {
         const overflowTopic = this.hub.INGESTION_CONSUMER_OVERFLOW_TOPIC
         if (!overflowTopic) {
             throw new Error('No overflow topic configured')
@@ -789,7 +793,7 @@ export class IngestionConsumer {
         )
     }
 
-    private async emitToTestingTopic(kafkaMessages: Message[]) {
+    private async emitToTestingTopic(kafkaMessages: Message[]): Promise<void> {
         const testingTopic = this.testingTopic
         if (!testingTopic) {
             throw new Error('No testing topic configured')
