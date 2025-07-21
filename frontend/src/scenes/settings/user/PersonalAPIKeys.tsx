@@ -252,7 +252,7 @@ function PersonalAPIKeysTable(): JSX.Element {
         getRestrictedOrganizationsForKey,
         getRestrictedTeamsForKey,
     } = useValues(personalAPIKeysLogic)
-    const { deleteKey, loadKeys, setEditingKeyId } = useActions(personalAPIKeysLogic)
+    const { deleteKey, loadKeys, setEditingKeyId, rotateKey } = useActions(personalAPIKeysLogic)
 
     useEffect(() => loadKeys(), [])
 
@@ -461,6 +461,12 @@ function PersonalAPIKeysTable(): JSX.Element {
                     render: (_, key) => humanFriendlyDetailedTime(key.created_at),
                 },
                 {
+                    title: 'Last Rotated',
+                    dataIndex: 'last_rotated_at',
+                    key: 'lastRotatedAt',
+                    render: (_, key) => humanFriendlyDetailedTime(key.last_rotated_at, 'MMMM DD, YYYY', 'h A'),
+                },
+                {
                     title: '',
                     key: 'actions',
                     align: 'right',
@@ -472,6 +478,26 @@ function PersonalAPIKeysTable(): JSX.Element {
                                     {
                                         label: 'Edit',
                                         onClick: () => setEditingKeyId(key.id),
+                                    },
+                                    {
+                                        label: 'Rotate',
+                                        onClick: () => {
+                                            LemonDialog.open({
+                                                title: `Rotate key "${key.label}"?`,
+                                                description:
+                                                    'This will generate a new key. The old key will immediately stop working.',
+                                                primaryButton: {
+                                                    status: 'danger',
+                                                    children: 'Rotate',
+                                                    type: 'primary',
+                                                    onClick: () => rotateKey(key.id),
+                                                },
+                                                secondaryButton: {
+                                                    children: 'Cancel',
+                                                    type: 'secondary',
+                                                },
+                                            })
+                                        },
                                     },
                                     {
                                         label: 'Delete',
