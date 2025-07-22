@@ -1,5 +1,5 @@
 import { LemonTagType, PaginationManual } from '@posthog/lemon-ui'
-import { actions, connect, events, kea, listeners, path, reducers, selectors } from 'kea'
+import { actions, connect, kea, listeners, path, reducers, selectors } from 'kea'
 import { loaders } from 'kea-loaders'
 import { actionToUrl, router, urlToAction } from 'kea-router'
 import api, { CountedPaginatedResponse } from 'lib/api'
@@ -201,11 +201,6 @@ export const experimentsLogic = kea<experimentsLogicType>([
                 ])
             },
         ],
-    })),
-    events(({ actions }) => ({
-        afterMount: () => {
-            actions.loadExperiments()
-        },
     })),
     actionToUrl(({ values }) => {
         const changeUrl = ():
