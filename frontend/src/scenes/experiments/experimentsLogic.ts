@@ -97,6 +97,18 @@ export const experimentsLogic = kea<experimentsLogicType>([
                 setExperimentsTab: (state, { tabKey }) => tabKey ?? state,
             },
         ],
+        /**
+         * we need this to track if we've loaded experiments at least once. Defautls to true
+         * so we won't show the product introduction with unresolved loading states.
+         * After the first load, this will always be false.
+         */
+        initialExperimentsLoading: [
+            true,
+            {
+                loadExperimentsSuccess: () => false,
+                loadExperimentsFailure: () => false,
+            },
+        ],
     }),
     listeners(({ actions }) => ({
         setExperimentsFilters: async (_, breakpoint) => {
@@ -171,9 +183,20 @@ export const experimentsLogic = kea<experimentsLogicType>([
             }),
         ],
         shouldShowEmptyState: [
-            (s) => [s.experimentsLoading, s.experiments, s.filters],
-            (experimentsLoading, experiments, filters): boolean => {
-                return !experimentsLoading && experiments.results.length <= 0 && objectsEqual(filters, DEFAULT_FILTERS)
+            (s) => [s.initialExperimentsLoading, s.experimentsLoading, s.experiments, s.filters],
+            (initialExperimentsLoading, experimentsLoading, experiments, filters): boolean => {
+                /**
+                 * to avoid flicker of the `ProductIntroduction` component we need to track if we've loaded
+                 * experiments at least once. This would be trivial if we were using afterMount, but we have
+                 * filters saved as URL state, so having bouth would cause a duplicated request for experiments,
+                 * and kea has no de-duplication of requests.
+                 */
+                return (
+                    !initialExperimentsLoading &&
+                    !experimentsLoading &&
+                    experiments.results.length <= 0 &&
+                    objectsEqual(filters, DEFAULT_FILTERS)
+                )
             },
         ],
         pagination: [
